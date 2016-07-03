@@ -18,8 +18,8 @@ float Iave = 0;
 float Imax = 0;
 float kWh = 0;
 float Watts = 0;
-float RunTime;
-float Hz;
+long RunTime = 0;             // figure out some sort of runtime counter in readable time
+float Hz = 0;
 
 
 
@@ -54,7 +54,7 @@ void LCDHomeMenuLayout()
   lcd.setCursor(0, 1);
   lcd.print("kWh XXX.xx");
   lcd.setCursor(11, 1);
-  lcd.print("Imx XX.xx");
+  lcd.print("Imax XX.x");
 
     // Next Run Info
   lcd.setCursor(0, 2);
