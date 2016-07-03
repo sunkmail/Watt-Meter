@@ -1,6 +1,3 @@
-#include <Time.h>
-#include <TimeLib.h>
-
 #include <Adafruit_ADS1015.h>
 #include <LiquidCrystal_I2C.h>
 #include <Wire.h>
@@ -21,8 +18,6 @@ const byte RtBut = 11;
 //----------------------------------------------------------------------
 int RuntimePlan[] = {0, 0, 0, 0};       // Runtime Planned for next run in: dd,hh,mm,ss
 unsigned long TimeRun = 0;
-const unsigned long TimeInit = 0; // esentially, reset millis()  Try for even easier math!
-// or = 946684800;    //time_t (unix) offset for Jan 1, 00:00:00
 
 unsigned long TimePlan = 0;     // Set default countdown timer to 0 == Run until STOP pressed
 //
@@ -68,7 +63,7 @@ void loop() {
       Relay_On = true;
 
       //setTime(hr,min,sec,day,month,yr);  or setTime(time_t);
-      setTime(TimeInit);         // Set Time to Jan 1, 2000 - For easy math!
+      //setTime(TimeInit);         // Set Time to Jan 1, 2000 - For easy math!
     }
 
   } while (Relay_On == false);
