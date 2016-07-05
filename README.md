@@ -14,6 +14,8 @@ My computer monitor requires how much power when:
 This is not a 'New' design, but rather a mash-up of other open source ideas from around the Web.   
 
 
+The Schematic and PCB designs are available at: https://easyeda.com/sunkmail/Watt_Meter-AGDnJH3NL
+
 The majority of my parts have been salvaged from commercial and consumer electronics, therefore I don't have full part numbers, suppliers, or prices.
 
 
