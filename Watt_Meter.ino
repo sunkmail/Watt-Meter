@@ -103,18 +103,18 @@ void LCDHomeMenuLayout(void)
   lcd.setCursor(0, 1);               // move cursor to first position (0) of the second (1) Line
   if (WattHours < 10)
   {
-    lcd.print("Wh:    ");            // Adjust spacing for 1 leading digit (0 -9.xx) WattHours reading
+    lcd.print("Wh:   ");            // Adjust spacing for 1 leading digit (0 -9.xx) WattHours reading
     lcd.print(WattHours, 2);
   }
   else if (WattHours < 100)
   {
-    lcd.print("Wh:   ");             // Adjust spacing for 2 leading digit (10 -99.xx) WattHours reading
+    lcd.print("Wh: ");             // Adjust spacing for 2 leading digit (10 -99.xx) WattHours reading
     lcd.print(WattHours, 2);
   }
   else if (WattHours < 1000)
   {
-    lcd.print("Wh:  ");              // Adjust spacing for 3 leading digit (100 -999.xx) WattHours reading
-    lcd.print(WattHours, 3);
+    lcd.print("Wh:");              // Adjust spacing for 3 leading digit (100 -999.xx) WattHours reading
+    lcd.print(WattHours, 2);
   }
   else
   {
@@ -139,7 +139,7 @@ void LCDHomeMenuLayout(void)
   lcd.setCursor(0, 3);
   lcd.print("START");
   lcd.setCursor(14, 3);
-  lcd.print("ADJUST");
+  lcd.print("ADJ");
 
 
 }
