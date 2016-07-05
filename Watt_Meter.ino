@@ -95,7 +95,7 @@ void LCDHomeMenuLayout(void)
   lcd.print(Vrms, 2);       // Display previous run Value w/ 2 decimal places
 
   // Iave
-  lcd.setCursor(10, 0);     // move cursor to position 10 of the Top (0) Line
+  lcd.setCursor(11, 0);     // move cursor to position 10 of the Top (0) Line
   lcd.print("Iave ");
   lcd.print(Iave, 2);
 
@@ -125,7 +125,7 @@ void LCDHomeMenuLayout(void)
   }
 
   //Imax
-  lcd.setCursor(11, 1);
+  lcd.setCursor(12, 1);
   lcd.print("Imax ");
   lcd.print(Imax, 1);           // Imax displayed to 1 decimal place
 
@@ -138,7 +138,7 @@ void LCDHomeMenuLayout(void)
   // Main Menu buttons
   lcd.setCursor(0, 3);
   lcd.print("START");
-  lcd.setCursor(14, 3);
+  lcd.setCursor(17, 3);
   lcd.print("ADJ");
 
 
