@@ -12,7 +12,9 @@
 
 LiquidCrystal_I2C lcd(0x27, 20, 4); // set the LCD address to 0x27 for a 20 chars by 4 line display
 
-Adafruit_ADS1115 ADC(0x48);       // Create an instance of the ADC  (With ADDR line to GND, address is 0x48 - Default))
+TimeDuration testTime;
+
+Adafruit_ADS1115 ads(0x48);       // Create an instance of the ADC  (With ADDR line to GND, address is 0x48 - Default))
 int16_t adc0, adc1, adc2, adc3;   // Setup ADC output variables - signed integers of exactly 16 bits
 
 const byte Relay_ON = 12;       // Relay control pin #  - Refers to 'Relay_ON' net name on sch.
@@ -30,15 +32,15 @@ bool keepRelayOn = false;       // Keep the load powered after countdown finishe
 const byte LtBut = 10;          // Pin #'s for menu control Buttons
 const byte RtBut = 11;
 
-
+const byte arraySize = 5;       // data array size
 //----------------------------------------------------------------------
-int runtimePlan[5] = {0,0,0,0,0};       // Runtime data for next run, as an array - default to zero.
-int runtimeNow[5]:                      // Runtime to use for actual test.  Copied from above at start of test.
+int runtimePlan[arraySize] = {0,0,0,0,0};       // Runtime data for next run, as an array - default to zero.
+int runtimeNow[arraySize] = {0,0,0,0,0};        // Runtime to use for actual test.  Copied from above at start of test.
 
-unsigned long TimeRun = 0;
+unsigned long timeRun = 0;
 unsigned long timePlan = 0;     // ms to run the test - Set default to 0 == Run until STOP pressed
 
-String lastTime;                // Previous Run's Runtime - in Human Readable format
+String lastTime;                // Current/Previous Run's Runtime - in Human Readable format
 String nextTime;                // For next Run's Runtime
 
 
@@ -55,8 +57,8 @@ float Hz = 0;
 
 void setup() {
 
-  pinMode(OutRelay, OUTPUT);        // Set Load control (output power) relay control pin as output
-  digitalWrite(OutRelay, LOW);      // Ensure the Relay is not energised at start
+  pinMode(Relay_ON, OUTPUT);        // Set Load control (output power) relay control pin as output
+  digitalWrite(Relay_ON, LOW);      // Ensure the Relay is not energised at start
 
   pinMode(PwrSense, INPUT);         // Set PwrSense line as input
 //---------From "To Do"--------------- attach interrupt to PwrSense pin.
@@ -69,31 +71,60 @@ void setup() {
   lcd.init();             // Not sure why it's done twice, but is this way in examples
   lcd.backlight();        // turn on backlight
 
-  ADC.begin();            // Initialize ads1115
+  ads.begin();            // Initialize ads1115
+  nextTime = testTime.showTime(runtimePlan,'d','s');
 
   delay(20);              // Delay for settling
 }
 
-void loop() {
-  do
+void loop() {   
+  LCDHomeMenuLayout();    // Display Home Menu
+  
+//  nextTime = testTime.showTime(runtimePlan, 'd','s');
+              // re calculate after change in menu
+  
+  do 
+//  while(testRunning == false);     // Stay in the Menu Loop whenever the test is not active
   {
-    LCDHomeMenuLayout();    // Display Home Menu
-
     if (digitalRead(LtBut) == LOW)  // If START pressed from Main menu...
     {
       testRunning = true;           // Flag to indicate the test is running on the load to be measured
-
-  
     }
 
   } while (testRunning == false);     // Stay in the Menu Loop whenever the test is not active
 
-  do
+
+  if(testRunning ==true)            // Run ONCE at start of test
   {
-  PowerMeasuring();         // If not in the menu - measure the power
-  
+    for(byte i = 0; i <= (arraySize-1); i++)
+    {
+      runtimeNow[i] = runtimePlan[i];  // copy plan time into active time
+    }
+    
+    LCDTestRunningSetup();                      // set static display elements for testing
+    timeRun = testTime.makeTime(runtimeNow);   // Convert human readable Runtime into ms
+    testTime.startOfTime();                     // Start duration timer
+    digitalWrite(Relay_ON, HIGH);               // Turn on the load
+
+  }
+
+    
+  do                                // Repeat while test running
+  {
+    
+    PowerMeasuring();               // Measure the power data
+    LCDRunningUpdate();             // Display latest data
+    
+  if(digitalRead(RtBut) == LOW)         // If STOP pressed
+    {
+      testRunning = false;                // Set Flag to exit Loop
+      digitalWrite(Relay_ON, LOW);        // Turn off load
+      timeRun = testTime.doingTime(runtimeNow);     // Take one last duration measurement
+    }
   } while (testRunning ==true);
+
   
+  lastTime = testTime.showTime(runtimeNow,'d','s');
 }
 
 
@@ -102,6 +133,7 @@ void loop() {
 
 void LCDHomeMenuLayout(void)
 {
+  lcd.clear();
   // Data Display from Previous Test
 
   //------------  Vrms  ------------
@@ -112,7 +144,7 @@ void LCDHomeMenuLayout(void)
   else if(Vrms >= 10)
     lcd.print("V:  ");      // Add extra space for 1 leading digit Vrms
   else
-    lcd.print("V:   ")
+    lcd.print("V:   ");
 
   lcd.print(Vrms, 2);       // Display previous run Value w/ 2 decimal places
 
@@ -156,8 +188,8 @@ void LCDHomeMenuLayout(void)
 
   //------------ Next Run Info ------------
   lcd.setCursor(0, 2);
-  lcd.print("Next Run Timer: ");   // Follow with
-
+  lcd.print("Nxt Run: ");   // Follow with
+  lcd.print(nextTime);
 
   //------------ Main Menu buttons ------------
   lcd.setCursor(0, 3);
@@ -170,19 +202,45 @@ void LCDHomeMenuLayout(void)
 
 
 
+
+
+//------------------------ LCDTestRunningSetup ------------------------------------
+void LCDTestRunningSetup()
+{
+  lcd.clear();
+  lcd.setCursor(16, 3);           
+  lcd.print("Stop");              // Rt button action
+  
+  lcd.setCursor(0, 2);
+  lcd.print("Runtime: ");
+  
+}
+//------------------------ End of LCDTestRunning ------------------------------------
+
+
+
+
+
 //------------------------ PowerMeasuring ------------------------------------
 
 void PowerMeasuring(void)
 {
-  while (testRunning == true)
-  {
-    digitalWrite(Relay_ON, HIGH);         // Turn on the load, if not already on
 
-
-
-
-    if(digitalRead(RtBut) == LOW)         // If STOP pressed
-      testRunning = false;                // Set Flag to exit Loop
-      Relay_On = false;                   // Turn off load
-  }
 }
+//------------------------ End of PowerMeasuring ------------------------------------
+
+
+
+
+//------------------------ LCDRunningUpdate ------------------------------------
+
+void LCDRunningUpdate()
+{
+//  lastTime = testTime.doingtime(runtimeNow,'d','s');
+  lcd.setCursor(9, 2);
+  testTime.doingTime(runtimeNow);                     // get elapsed time
+  lastTime = testTime.showTime(runtimeNow,'d','s');
+  lcd.print(lastTime);
+}
+//------------------------ End of LCDTestRunningUpdate ------------------------------------
+
