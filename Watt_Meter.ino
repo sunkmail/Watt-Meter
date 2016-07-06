@@ -3,8 +3,12 @@
  *      - Set-up menu system - Partially done
  *      - attach interrupt to PwrSense pin
  *      - WDT
- * 
+ *      - BrownOut function from PwrSense interrupt
+ *      
+ *      
+ *      
 */ 
+
 #include <Adafruit_ADS1015.h>
 #include <LiquidCrystal_I2C.h>
 #include <Wire.h>
@@ -141,4 +145,20 @@ void PowerMeasuring(void)
 //------------------------ End of PowerMeasuring ------------------------------------
 
 
+
+
+
+
+
+
+
+//------------------------ BrownOut ------------------------------------
+
+void BrownOut(void)
+{
+  // Store variables to memory
+
+  
+}
+//------------------------ BrownOut ------------------------------------
 
