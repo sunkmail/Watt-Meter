@@ -1,13 +1,17 @@
 /*
- * To Do:
- *      - Set-up menu system - Partially done
- *      - attach interrupt to PwrSense pin
- *      - WDT
- *      - BrownOut function from PwrSense interrupt
- *      
- *      
- *      
-*/ 
+   To Do:
+        - Set-up menu system - Partially done
+        - countdown timer implementation
+          - keep relay on after timer hits zero
+        - Add I2C sensor input
+        - Add Power math calculations
+        - attach interrupt to PwrSense pin
+        - BrownOut function from PwrSense interrupt
+        - WDT
+
+
+
+*/
 
 #include <Adafruit_ADS1015.h>
 #include <LiquidCrystal_I2C.h>
@@ -24,22 +28,22 @@ int16_t adc0, adc1, adc2, adc3;   // Setup ADC output variables - signed integer
 const byte Relay_ON = 12;       // Relay control pin #  - Refers to 'Relay_ON' net name on sch.
 
 const byte PwrSense = 13;       // Input pin for PwrSense signal - indicates if supply voltage lost.
-                                // if this input goes LOW, no input power
+// if this input goes LOW, no input power
 
 bool brownOut = false;          // Flag to show if last pwr loss (to whole cct) was during an active test
 
 bool testRunning = false;       // Flag to indicate if the test is running on the load to be measured
 
-bool keepRelayOn = false;       // Keep the load powered after countdown finished?   
-                                // (Pressing 'STOP' will ALWAYS power down the load)
+bool keepRelayOn = false;       // Keep the load powered after countdown finished?
+// (Pressing 'STOP' will ALWAYS power down the load)
 
 const byte LtBut = 10;          // Pin #'s for menu control Buttons
 const byte RtBut = 11;
 
 const byte arraySize = 5;       // data array size
 //----------------------------------------------------------------------
-int runtimePlan[arraySize] = {0,0,0,0,0};       // Runtime data for next run, as an array - default to zero.
-int runtimeNow[arraySize] = {0,0,0,0,0};        // Runtime to use for actual test.  Copied from above at start of test.
+int runtimePlan[arraySize] = {0, 0, 0, 0, 0};   // Runtime data for next run, as an array - default to zero.
+int runtimeNow[arraySize] = {0, 0, 0, 0, 0};    // Runtime to use for actual test.  Copied from above at start of test.
 
 unsigned long timeRun = 0;
 unsigned long timePlan = 0;     // ms to run the test - Set default to 0 == Run until STOP pressed
@@ -54,6 +58,7 @@ float Vrms = 0;
 float Iave = 0;
 float Imax = 0;
 float WattHours = 0;
+//float kWattHours = 0;         // Moved inside function
 float Watts = 0;
 float Hz = 0;
 
@@ -65,8 +70,8 @@ void setup() {
   digitalWrite(Relay_ON, LOW);      // Ensure the Relay is not energised at start
 
   pinMode(PwrSense, INPUT);         // Set PwrSense line as input
-//---------From "To Do"--------------- attach interrupt to PwrSense pin.
-  
+  //---------From "To Do"--------------- attach interrupt to PwrSense pin.
+
 
   pinMode(LtBut, INPUT_PULLUP); // Pin setup for menu control Buttons
   pinMode(RtBut, INPUT_PULLUP);
@@ -76,35 +81,22 @@ void setup() {
   lcd.backlight();        // turn on backlight
 
   ads.begin();            // Initialize ads1115
-  nextTime = testTime.showTime(runtimePlan,'d','s');
+  nextTime = testTime.showTime(runtimePlan, 'd', 's');
+  timePlan = testTime.makeTime(runtimePlan);
 
   delay(20);              // Delay for settling
 }
 
-void loop() {   
-  LCDHomeMenuLayout();    // Display Home Menu
-  
-//  nextTime = testTime.showTime(runtimePlan, 'd','s');
-              // re calculate after change in menu
-  
-  do 
-//  while(testRunning == false);     // Stay in the Menu Loop whenever the test is not active
+void loop() {
+  MenuLoop();        // Go to the menu system
+
+  if (testRunning == true)          // Run ONCE at start of test
   {
-    if (digitalRead(LtBut) == LOW)  // If START pressed from Main menu...
-    {
-      testRunning = true;           // Flag to indicate the test is running on the load to be measured
-    }
-
-  } while (testRunning == false);     // Stay in the Menu Loop whenever the test is not active
-
-
-  if(testRunning ==true)            // Run ONCE at start of test
-  {
-    for(byte i = 0; i <= (arraySize-1); i++)
+    for (byte i = 0; i <= (arraySize - 1); i++)
     {
       runtimeNow[i] = runtimePlan[i];  // copy plan time into active time
     }
-    
+
     LCDRunningSetup();                      // set static display elements for testing
     timeRun = testTime.makeTime(runtimeNow);   // Convert human readable Runtime into ms
     testTime.startOfTime();                     // Start duration timer
@@ -112,23 +104,23 @@ void loop() {
 
   }
 
-    
+
   do                                // Repeat while test running
   {
-    
+
     PowerMeasuring();               // Measure the power data
     LCDRunningUpdate();             // Display latest data
-    
-  if(digitalRead(RtBut) == LOW)         // If STOP pressed
+
+    if (digitalRead(RtBut) == LOW)        // If STOP pressed
     {
       testRunning = false;                // Set Flag to exit Loop
       digitalWrite(Relay_ON, LOW);        // Turn off load
       timeRun = testTime.doingTime(runtimeNow);     // Take one last duration measurement
     }
-  } while (testRunning ==true);
+  } while (testRunning == true);
 
-  
-  lastTime = testTime.showTime(runtimeNow,'d','s');
+
+  lastTime = testTime.showTime(runtimeNow, 'd', 's');
 }
 
 
@@ -158,7 +150,7 @@ void BrownOut(void)
 {
   // Store variables to memory
 
-  
+
 }
 //------------------------ BrownOut ------------------------------------
 
