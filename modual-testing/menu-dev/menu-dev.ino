@@ -136,6 +136,41 @@ void loop()
 	
 	
 	
+	if(testRunning == true)
+	{
+		digitalWrite(Relay_ON, HIGH);               // Turn on the load
+		
+		butPress = 0;
+		butPress = digitalRead(Relay_ON);	// Wait for  button press
+		
+		Serial.println();
+		Serial.println();
+		Serial.println();
+		Serial.println();
+		Serial.println("Functions to run Test");
+		Serial.println();
+		Serial.println();
+		Serial.println("Rt = Stop Test");
+		
+		
+		do
+		{
+			
+			if(digitalRead(RtBut) == LOW)   // If STOP Pressed
+			{
+				delay(200);				// cheap debouce
+				while(digitalRead(RtBut) == LOW) // wait for button release
+				{
+				}
+				testRunning = false;
+				digitalWrite(Relay_ON, LOW);	// Turn off load
+				
+			}
+		} while(testRunning == true);
+		
+	}
+	
+	
 }
 ///////////////////////////// End of loop /////////////////////////////
 
@@ -209,7 +244,7 @@ void menuNav(byte _leftAction, byte _rightAction)
 	{
 		case(run):				// Run Test
 			{
-				testRunning == true;	// Set flag to run test
+				testRunning = true;	// Set flag to run test
 				menuLevel = 0;		// reset menu levels
 				menuSubLevel = 0;
 				break;
