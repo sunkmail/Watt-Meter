@@ -2,21 +2,26 @@
 /*
    To Do:
         - Set-up menu system - Partially done
-        - countdown timer implementation
+        - countdown timer implementation - Partially done
         - keep relay on after timer hits zero
-        - Add I2C sensor input
-        - Add Power math calculations
+        - Add I2C sensor input - Partially done
+        - Add Power math calculations - Partially done
         - attach interrupt to PwrSense pin
         - BrownOut function from PwrSense interrupt
         - WDT
-
-
-
+        - Voltage input (120/240) auto sense/calculation (from 120/240 selector switch)
 */
+
+#define DEBUG true
+#include <easyDebug.h>
+
+
+
 #include <Adafruit_ADS1015.h>
 #include <LiquidCrystal_I2C.h>
 #include <Wire.h>
 #include <TimeDuration.h>        // Custom Library available at: http://github.com/sunkmail/TimeDuration/releases
+#include <avr/pgmspace.h>
 
 LiquidCrystal_I2C lcd(0x27, 20, 4); // set the LCD address to 0x27 for a 20 chars by 4 line display
 
@@ -26,13 +31,18 @@ TimeDuration testTime;
 //-------------------------------
 
 Adafruit_ADS1115 ads(0x48);       // Create an instance of the ADC  (With ADDR line to GND, address is 0x48 - Default))
-int16_t adc0, adc1, adc2, adc3;   // Setup ADC output variables - signed integers of exactly 16 bits
+uint16_t adc0, adcVsenseRaw, adcAutoCalRaw, adcIsenseRaw;   // Setup ADC output variables - signed integers of exactly 16 bits
+const byte VsenseChannel PROGMEM = 1;
+const byte IsenseChannel PROGMEM = 3;
+const byte autoCalChannel PROGMEM = 2;
+
 
 //-------------------------------
-const byte Relay_ON = 12;       // Relay control pin #  - Refers to 'Relay_ON' net name on sch.
+const byte Relay_ON PROGMEM = 12;       // Relay control pin #  - Refers to 'Relay_ON' net name on sch.
 
-const byte PwrSense = 13;       // Input pin for PwrSense signal - indicates if supply voltage lost.
+const byte PwrSense PROGMEM = 13;       // Input pin for PwrSense signal - indicates if supply voltage lost.
 // if this input goes LOW, no input power
+
 
 ////////-------------------
 bool brownOut = false;          // Flag to show if last pwr loss (to whole cct) was during an active test
@@ -45,11 +55,11 @@ bool keepRelayOn = false;       // Keep the load powered after countdown finishe
 
 
 ////////----------------- Button Stuff ----------------------
-const byte LtBut = 10;          // Pin #'s for menu control Buttons
-const byte RtBut = 11;
+const byte LtBut PROGMEM = 10;          // Pin #'s for menu control Buttons
+const byte RtBut PROGMEM = 11;
 
-const byte left = 1;
-const byte right = 2;
+const byte left PROGMEM = 1;
+const byte right PROGMEM = 2;
 
 byte butPress = 0;              // Tri-state yte for passing button press info.
 // 0 = None
@@ -61,7 +71,7 @@ byte butPress = 0;              // Tri-state yte for passing button press info.
 //////////------ Timing Related Stuff --------------
 
 //----------------------------------------------------------------------
-const byte arraySize = 5;       // data array size
+const byte PROGMEM arraySize = 5;       // data array size
 //----------------------------------------------------------------------
 int runtimePlan[arraySize] = {0, 0, 0, 0, 0};   // Runtime data for next run, as an array - default to zero.
 int runtimeNow[arraySize] = {0, 0, 0, 0, 0};    // Runtime to use for actual test.  Copied from above at start of test.
@@ -72,16 +82,25 @@ unsigned long msTimePlan = 0;     // ms to run the test - Set default to 0 == Ru
 String lastTime;                // Current/Previous Run's Runtime - in Human Readable format
 String nextTime;                // For next Run's Runtime
 
-
+const String StTimeMode[] PROGMEM  = {"Until Stopped"," Countdown"};
+byte timeMode = 0;        // 0 = Until Stopped, 1 = Countdown
 
 //---------------- Power Result Variables--------------------------------
-float Vrms = 0;
-float Iave = 0;
-float Imax = 0;
-float WattHours = 0;
+const byte PROGMEM SampleSize = 50;
+unsigned long TotalSamples = 0;
+unsigned long sampleTime = 0;       // ms after start the last sample was taken
+
+const int IZeroingValue PROGMEM = 16383;         ////////////  Half of signed 16bit - need to be fine tuned??
+float Vrms = 0.0;
+float Vworking[SampleSize];
+float Iave = 0.0;
+float Iworking[SampleSize];
+float Imax = 0.0;
+float WattHours = 0.0;
+const unsigned long OneHour PROGMEM = 3600000;   // ms in an hour
 //float kWattHours = 0;         // Moved inside function
-float Watts = 0;
-float Hz = 0;
+float Watts = 0.0;
+float Hz = 0.0;
 //------------------------------------------------------------------------
 
 ////////------ Menu System Related -------------
@@ -91,15 +110,15 @@ byte menuSubLevel = 0;
 
 ////////------------------
 // Menu nav options
-const byte run = 0;    // Run Test
-const byte next = 1;    // Next Menu
-const byte adj = 2;   // Adjust valus -- go to first sub menu item
-const byte root = 3;    // Go back to Root menu page
-const byte nextSub = 4;    // Go to nex sub menu
-const byte none = 5;    // no button function
-const byte prev = 6;    // go back 1 sub menu level
+const byte PROGMEM run = 0;    // Run Test
+const byte PROGMEM next = 1;    // Next Menu
+const byte PROGMEM adj = 2;   // Adjust valus -- go to first sub menu item
+const byte PROGMEM root = 3;    // Go back to Root menu page
+const byte PROGMEM nextSub = 4;    // Go to nex sub menu
+const byte PROGMEM none = 5;    // no button function / Stay in same menu
+const byte PROGMEM prevSub = 6;    // go back 1 sub menu level
 
-const byte err = 255;   // non valid value - reset settings & return to root
+const byte PROGMEM err = 255;   // non valid value - reset settings & return to root
 ////////-------------------
 
 void setup() {
@@ -122,9 +141,13 @@ void setup() {
   // Pull previous settings & variables from Memory
 
   ads.begin();            // Initialize ads1115
+  ads.setGain(GAIN_TWOTHIRDS);  // Set gain at 2/3x gain +/- 6.144V, 0.1875mV/bit - Don't exceed Vin (5V)
   
   nextTime = testTime.showTime(runtimePlan, 'd', 's');
   msTimePlan = testTime.makeTime(runtimePlan);
+
+  DEBUG_Begin(9600);    //only start if in DEBUG mode
+  DBprintln("setup done");
 
   delay(20);              // Delay for settling
 
@@ -240,9 +263,13 @@ byte checkButtons(bool _Lt, bool _Rt)
     // Do nothing until all buttons released
   }
 
+    DBprint("Button Pressed: ");       
+    DBprintln(_butPress);  
   return _butPress;
 }
 ///////////////////////////// End of checkButtons /////////////////////////////
+
+
 
 
 
