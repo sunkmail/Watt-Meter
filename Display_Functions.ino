@@ -11,7 +11,7 @@ void dispVrms()             // Set cursor position before calling
   else
     lcd.print("Vav:  ");
 
-  lcd.print(Vrms, 2);       // Display previous run Value w/ 2 decimal places
+  lcd.print(Vrms, 2);       // Display Vrms Value w/ 2 decimal places
 }
 
 /////////////////////////  End of dispVrms ////////////////////////////////////
@@ -91,7 +91,24 @@ void dispImax()                 // Set cursor position before calling
 {
   lcd.print("Imx: ");
   lcd.print(Imax, 2);           // Imax displayed to 2 decimal place
+
+}
+/////////////////////////  End of dispImax ////////////////////////////////////
+
+
+
+
+//----------------------- Start of menuButtons ------------------------------------
+
+void menuButtons(String _Left, String _Right)     // uses Bottom Line 
+{
+  byte _length;
+  lcd.setCursor(0, 3);
+  lcd.print(_Left);    
+  _length = _Right.length();        // determine # chars in string
+  lcd.setCursor((20 - _length), 3); // Set cursor back that many spaces
+  lcd.print(_Right);
 }
 
 
-/////////////////////////  End of dispImax ////////////////////////////////////
+/////////////////////////  End of menuButtons ////////////////////////////////////
